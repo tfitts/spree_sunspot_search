@@ -12,6 +12,50 @@ module Spree
         @solr_search
       end
 
+      def retrieve_hits(featured = 0)
+
+        @solr_search =  ::Sunspot.new_search(Spree::Product) do |q|
+
+          list = [:category,:group,:type,:theme,:color,:shape,:brand,:size,:material,:for,:agegroup]
+          list.each do |facet|
+            q.facet(facet)
+          end
+
+          q.with(:is_active, true)
+          q.keywords(keywords)
+
+          unless @properties[:order_by].empty?
+            sort = @properties[:order_by].split(',')
+            q.order_by(sort[0],sort[1])
+          end
+
+
+          q.order_by(:position)
+          q.order_by(:subposition)
+
+          if @properties[:price].present? then
+            low = @properties[:price].first
+            high = @properties[:price].last
+            q.with(:price,low..high)
+          end
+
+          q.with(:featured, true) unless featured == 0
+          q.paginate(:page => @properties[:page] || 1, :per_page => @properties[:per_page] || Spree::Config[:products_per_page])
+
+        end
+
+
+        unless @properties[:filters].blank?
+          conditions = Spree::Sunspot::Filter::Query.new( @properties[:filters] )
+          @solr_search = conditions.build_search( @solr_search )
+        end
+
+        @solr_search.execute
+
+        @solr_search.hits
+
+      end
+
       def retrieve_products(*args)
         @products_scope = get_base_scope
         if args
@@ -55,16 +99,76 @@ module Spree
         @similar_products = products_results.sort_by{ |p| hits.find_index(p.id) }.shift(total_similar_products)
       end
 
+      def intercept
+
+        return {} unless keywords
+
+        key = keywords.titleize
+        redirect = {}
+
+        #search keywords for matches in taxon names
+        Spree::Taxon.all(:order => 'length(name) desc, name').each do |cat|
+          unless ['Balloons','Tableware'].include? cat.name then
+            if key.include? cat.name then
+              redirect.update(:permalink => cat)
+              key = key.gsub(cat.name,'')
+              break
+            end
+          end
+        end
+
+
+        #select facets for
+        matches = [:category, :group, :type, :color, :theme, :shape, :size]
+        @facet_match = ::Sunspot.new_search(Spree::Product) do |q|
+
+          matches.each do |facet|
+            q.facet facet, :limit => -1, :sort => :count
+          end
+          q.paginate(page: 1, per_page: Spree::Product.count)
+
+        end
+
+
+        @facet_match.execute
+
+        @facet_match.hits.each do |hit|
+          if hit.stored(:sku) == keywords.upcase then
+            return {:product => hit }
+          end
+        end
+
+        matches.each do |face|
+          @facet_match.facet(face).rows.each do |row|
+            if key.match("\\b#{row.value}\\b") then
+              key = key.gsub(row.value,'')
+              redirect.update(face => row.value)
+            elsif key.match("\\b#{row.value.singularize}\\b")
+              key = key.gsub(row.value.singularize,'')
+              redirect.update(face => row.value)
+            end
+          end
+        end
+
+        redirect.update(:keywords => key.strip.split.collect{|x| x.singularize}.join(' ')) unless key.strip.empty?
+        redirect.update(:q => keywords)
+
+        redirect
+
+      end
+
       protected
 
       def get_base_scope
         base_scope = Spree::Product.active
         base_scope = base_scope.in_taxon(taxon) unless taxon.blank?
         base_scope = get_products_conditions_for(base_scope, keywords)
-        base_scope = base_scope.on_hand unless Spree::Config[:show_zero_stock_products]
+
 
         base_scope = add_search_scopes(base_scope)
       end
+
+
 
       # TODO: This method is shit; clean it up John. At least you were paid to write this =P
       def get_products_conditions_for(base_scope, query)
@@ -102,9 +206,25 @@ module Spree
 
       def prepare(params)
         super
-        @properties[:filters] = params[:s] || params['s'] || []
+
+
+        filter = {}
+        filter = {:taxon_ids => taxon.self_and_descendants.map(&:id)} unless taxon.class == NilClass
+
+        list = [:category,:group,:type,:theme,:color,:shape,:brand,:size,:material,:for,:agegroup]
+        list.each do |prop|
+          filter.update(prop.to_s => params[prop.to_s].split(',')) unless !params[prop.to_s].present?
+        end
+
+        #if @properties[:taxon].respond_to?(:id)
+        #filter.update(:taxon_ids => [@properties[:taxon][:id].to_s])
+        #end
+        filter.merge!(params[:s]) unless !params[:s].present?
+
+        @properties[:filters] = filter
+
+        @properties[:price] = params[:price].split('-') if params[:price].present?
         @properties[:order_by] = params[:order_by] || params['order_by'] || []
-        @properties[:location_coords] = params[:location_coords] || params['location_coords'] || nil
         @properties[:total_similar_products] = params[:total_similar_products].to_i > 0 ?
             params[:total_similar_products].to_i :
             Spree::Config[:total_similar_products]
