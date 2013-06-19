@@ -12,7 +12,7 @@ module Spree
         @solr_search
       end
 
-      def retrieve_hits(featured = 0)
+      def retrieve_products(featured = 0)
 
         @solr_search =  ::Sunspot.new_search(Spree::Product) do |q|
 
@@ -54,26 +54,6 @@ module Spree
 
         @solr_search.hits
 
-      end
-
-      def retrieve_products(*args)
-        @products_scope = get_base_scope
-        if args
-          args.each do |additional_scope|
-            case additional_scope
-              when Hash
-                scope_method = additional_scope.keys.first
-                scope_values = additional_scope[scope_method]
-                @products_scope = @products_scope.send(scope_method.to_sym, *scope_values)
-              else
-                @products_scope = @products_scope.send(additional_scope.to_sym)
-            end
-          end
-        end
-
-        curr_page = @properties[:page] || 1
-        per_page  = @properties[:per_page] || Spree::Config[:products_per_page]
-        @products = @products_scope.includes([:master]).page(curr_page).per(per_page)
       end
 
       def similar_products(product, *field_names)
