@@ -24,6 +24,9 @@ module Spree
           q.with(:is_active, true)
           q.keywords(keywords)
 
+          q.order_by(:in_stock, :desc)
+          q.order_by(:missing_image)
+
           unless @properties[:order_by].empty?
             sort = @properties[:order_by].split(',')
             q.order_by(sort[0],sort[1])
