@@ -16,7 +16,7 @@ module Spree
 
         @solr_search =  ::Sunspot.new_search(Spree::Product) do |q|
 
-          list = [:category,:group,:type,:theme,:color,:shape,:brand,:size,:material,:for,:agegroup]
+          list = [:category,:group,:type,:theme,:color,:shape,:brand,:size,:material,:for,:agegroup,:saletype]
           list.each do |facet|
             q.facet(facet)
           end
@@ -60,6 +60,39 @@ module Spree
         @solr_search.execute
 
         @solr_search.hits
+
+      end
+
+      def retrieve_related(theme)
+
+        @related =  ::Sunspot.new_search(Spree::Product) do |q|
+
+          q.with(:is_active, true)
+
+          q.with(:related,theme.to_s)
+
+          q.order_by(:missing_image)
+          q.order_by(:in_stock, :desc)
+
+
+          unless @properties[:order_by].empty?
+            sort = @properties[:order_by].split(',')
+            q.order_by(sort[0],sort[1])
+          end
+
+
+          q.order_by(:theme)
+
+          q.order_by(:position)
+          q.order_by(:subposition)
+
+          q.paginate(:page => 1, :per_page => 1000)
+
+        end
+
+        @related.execute
+
+        @related.hits
 
       end
 
@@ -198,7 +231,7 @@ module Spree
         filter = {}
         filter = {:taxon_ids => taxon.self_and_descendants.map(&:id)} unless taxon.class == NilClass
 
-        list = [:category,:group,:type,:theme,:color,:shape,:brand,:size,:material,:for,:agegroup]
+        list = [:category,:group,:type,:theme,:color,:shape,:brand,:size,:material,:for,:agegroup,:saletype]
         list.each do |prop|
           filter.update(prop.to_s => params[prop.to_s].split(',')) unless !params[prop.to_s].present?
         end
