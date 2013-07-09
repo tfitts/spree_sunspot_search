@@ -39,8 +39,13 @@ module Spree
             q.with(:price,low..high)
           end
 
-          q.with(:featured, true) unless featured == 0
-          q.paginate(:page => @properties[:page] || 1, :per_page => @properties[:per_page] || Spree::Config[:products_per_page])
+          if featured > 0 then
+            q.with(:featured, true) unless featured == 0
+            q.paginate(:page => @properties[:page] || 1, :per_page => 10000)
+          else
+            q.paginate(:page => @properties[:page] || 1, :per_page => @properties[:per_page] || Spree::Config[:products_per_page])
+          end
+
 
         end
 
@@ -53,6 +58,48 @@ module Spree
         @solr_search.execute
 
         @solr_search.hits
+
+      end
+
+      def groups(category)
+
+        @solr_search =  ::Sunspot.new_search(Spree::Product) do |q|
+
+
+          q.facet :group :limit => -1, :sort => :count
+
+          q.with(:is_active, true)
+          q.keywords(keywords)
+
+          unless @properties[:order_by].empty?
+            sort = @properties[:order_by].split(',')
+            q.order_by(sort[0],sort[1])
+          end
+
+
+          q.order_by(:position)
+          q.order_by(:subposition)
+
+          if @properties[:price].present? then
+            low = @properties[:price].first
+            high = @properties[:price].last
+            q.with(:price,low..high)
+          end
+
+          q.with(:category, category)
+          q.paginate(:page => @properties[:page] || 1, :per_page => @properties[:per_page] || Spree::Config[:products_per_page])
+
+        end
+
+
+        unless @properties[:filters].blank?
+          conditions = Spree::Sunspot::Filter::Query.new( @properties[:filters] )
+          @solr_search = conditions.build_search( @solr_search )
+        end
+
+        @solr_search.execute
+
+        @solr_search.facets
 
       end
 
