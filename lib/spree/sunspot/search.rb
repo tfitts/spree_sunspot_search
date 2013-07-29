@@ -40,7 +40,7 @@ module Spree
           end
 
           if featured > 0 then
-            q.with(:featured, true) unless featured == 0
+            q.with(:featured, true)
             q.paginate(:page => @properties[:page] || 1, :per_page => 10000)
           else
             q.paginate(:page => @properties[:page] || 1, :per_page => @properties[:per_page] || Spree::Config[:products_per_page])
@@ -65,10 +65,13 @@ module Spree
 
         @solr_search =  ::Sunspot.new_search(Spree::Product) do |q|
 
-
-          q.facet :group :limit => -1, :sort => :count
+          #list = [:category,:group,:type,:theme,:color,:shape,:brand,:size,:material,:for,:agegroup]
+          #list.each do |facet|
+          q.facet(:group, :limit => -1)
+          #end
 
           q.with(:is_active, true)
+          q.with(:category, category)
           q.keywords(keywords)
 
           unless @properties[:order_by].empty?
@@ -86,7 +89,6 @@ module Spree
             q.with(:price,low..high)
           end
 
-          q.with(:category, category)
           q.paginate(:page => @properties[:page] || 1, :per_page => @properties[:per_page] || Spree::Config[:products_per_page])
 
         end
@@ -99,7 +101,7 @@ module Spree
 
         @solr_search.execute
 
-        @solr_search.facets
+        @solr_search.facets.first.rows
 
       end
 
@@ -146,7 +148,7 @@ module Spree
 
 
         #select facets for
-        matches = [:category, :group, :type, :color, :theme, :shape, :size]
+        matches = [:category, :group, :type, :color, :theme, :shape, :size, :brand]
         @facet_match = ::Sunspot.new_search(Spree::Product) do |q|
 
           matches.each do |facet|
@@ -177,7 +179,7 @@ module Spree
           end
         end
 
-        redirect.update(:keywords => key.strip.split.collect{|x| x.singularize}.join(' ')) unless key.strip.empty?
+        redirect.update(:keywords => key.strip.split.collect{|x| x}.join(' ')) unless key.strip.empty?
         redirect.update(:q => keywords)
 
         redirect
