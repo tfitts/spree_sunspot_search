@@ -107,7 +107,7 @@ module Spree
         @solr_search =  ::Sunspot.new_search(Spree::Product) do |q|
 
 
-          q.facet :group :limit => -1
+          q.facet(:group, :limit => -1)
 
           q.with(:is_active, true)
           q.with(:category, category)
