@@ -187,7 +187,7 @@ module Spree
 
 
         #select facets for
-        matches = [:category, :group, :type, :color, :theme, :shape, :size]
+        matches = [:category, :group, :type, :theme, :color, :shape, :size]
         @facet_match = ::Sunspot.new_search(Spree::Product) do |q|
 
           matches.each do |facet|
