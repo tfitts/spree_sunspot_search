@@ -190,7 +190,7 @@ module Spree
         matches = [:category, :group, :type, :theme, :color, :shape, :size]
         @facet_match = ::Sunspot.new_search(Spree::Product) do |q|
 
-          matches.each do |facet|
+          matches.sort_by(&:length).reverse.each do |facet|
             q.facet facet, :limit => -1, :sort => :count
           end
           q.paginate(page: 1, per_page: Spree::Product.count)
