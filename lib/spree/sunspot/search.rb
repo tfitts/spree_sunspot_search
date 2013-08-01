@@ -218,7 +218,7 @@ module Spree
           end
         end
 
-        redirect.update(:keywords => key.strip.split.collect{|x| x.singularize}.join(' ')) unless key.strip.empty?
+        redirect.update(:keywords => key.strip.split.join(' ')) unless key.strip.empty?
         redirect.update(:q => keywords)
 
         redirect
