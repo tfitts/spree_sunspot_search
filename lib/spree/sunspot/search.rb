@@ -16,7 +16,7 @@ module Spree
 
         @solr_search =  ::Sunspot.new_search(Spree::Product) do |q|
 
-          list = [:category,:group,:type,:theme,:color,:shape,:brand,:size,:material,:for,:agegroup]
+          list = [:category,:group,:type,:theme,:color,:shape,:brand,:size,:material,:for,:agegroup,:saletype]
           list.each do |facet|
             q.facet(facet)
           end
@@ -24,10 +24,17 @@ module Spree
           q.with(:is_active, true)
           q.keywords(keywords)
 
+          q.order_by(:missing_image)
+          q.order_by(:in_stock, :desc)
+
+
           unless @properties[:order_by].empty?
             sort = @properties[:order_by].split(',')
             q.order_by(sort[0],sort[1])
           end
+
+
+          q.order_by(:theme)
 
 
           q.order_by(:position)
@@ -47,6 +54,7 @@ module Spree
           end
 
 
+
         end
 
 
@@ -61,14 +69,45 @@ module Spree
 
       end
 
+      def retrieve_related(theme)
+
+        @related =  ::Sunspot.new_search(Spree::Product) do |q|
+
+          q.with(:is_active, true)
+
+          q.with(:related,theme.to_s)
+
+          q.order_by(:missing_image)
+          q.order_by(:in_stock, :desc)
+
+
+          unless @properties[:order_by].empty?
+            sort = @properties[:order_by].split(',')
+            q.order_by(sort[0],sort[1])
+          end
+
+
+          q.order_by(:theme)
+
+          q.order_by(:position)
+          q.order_by(:subposition)
+
+          q.paginate(:page => 1, :per_page => 1000)
+
+        end
+
+        @related.execute
+
+        @related.hits
+
+      end
+
       def groups(category)
 
         @solr_search =  ::Sunspot.new_search(Spree::Product) do |q|
 
-          #list = [:category,:group,:type,:theme,:color,:shape,:brand,:size,:material,:for,:agegroup]
-          #list.each do |facet|
-          q.facet(:group, :limit => -1)
-          #end
+
+          q.facet :group :limit => -1
 
           q.with(:is_active, true)
           q.with(:category, category)
@@ -101,7 +140,7 @@ module Spree
 
         @solr_search.execute
 
-        @solr_search.facets.first.rows
+        @solr_search.facets
 
       end
 
@@ -148,7 +187,7 @@ module Spree
 
 
         #select facets for
-        matches = [:category, :group, :type, :color, :theme, :shape, :size, :brand]
+        matches = [:category, :group, :type, :color, :theme, :shape, :size]
         @facet_match = ::Sunspot.new_search(Spree::Product) do |q|
 
           matches.each do |facet|
@@ -179,7 +218,7 @@ module Spree
           end
         end
 
-        redirect.update(:keywords => key.strip.split.collect{|x| x}.join(' ')) unless key.strip.empty?
+        redirect.update(:keywords => key.strip.split.collect{|x| x.singularize}.join(' ')) unless key.strip.empty?
         redirect.update(:q => keywords)
 
         redirect
@@ -240,7 +279,7 @@ module Spree
         filter = {}
         filter = {:taxon_ids => taxon.self_and_descendants.map(&:id)} unless taxon.class == NilClass
 
-        list = [:category,:group,:type,:theme,:color,:shape,:brand,:size,:material,:for,:agegroup]
+        list = [:category,:group,:type,:theme,:color,:shape,:brand,:size,:material,:for,:agegroup,:saletype]
         list.each do |prop|
           filter.update(prop.to_s => params[prop.to_s].split(',')) unless !params[prop.to_s].present?
         end
