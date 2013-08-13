@@ -187,7 +187,7 @@ module Spree
 
 
         #select facets for
-        matches = [:category, :group, :type, :theme, :color, :shape, :size]
+        matches = [:category, :group, :type, :theme, :keyword, :color, :shape, :size]
         @facet_match = ::Sunspot.new_search(Spree::Product) do |q|
 
           matches.each do |facet|
@@ -231,7 +231,6 @@ module Spree
         base_scope = Spree::Product.active
         base_scope = base_scope.in_taxon(taxon) unless taxon.blank?
         base_scope = get_products_conditions_for(base_scope, keywords)
-
 
         base_scope = add_search_scopes(base_scope)
       end
@@ -279,7 +278,7 @@ module Spree
         filter = {}
         filter = {:taxon_ids => taxon.self_and_descendants.map(&:id)} unless taxon.class == NilClass
 
-        list = [:category,:group,:type,:theme,:color,:shape,:brand,:size,:material,:for,:agegroup,:saletype]
+        list = [:category,:group,:type,:theme,:color,:shape,:brand,:size,:material,:for,:agegroup,:saletype,:keyword]
         list.each do |prop|
           filter.update(prop.to_s => params[prop.to_s].split(',')) unless !params[prop.to_s].present?
         end
