@@ -106,8 +106,10 @@ module Spree
 
         @solr_search =  ::Sunspot.new_search(Spree::Product) do |q|
 
-
+          #list = [:category,:group,:type,:theme,:color,:shape,:brand,:size,:material,:for,:agegroup]
+          #list.each do |facet|
           q.facet(:group, :limit => -1)
+          #end
 
           q.with(:is_active, true)
           q.with(:category, category)
@@ -140,7 +142,7 @@ module Spree
 
         @solr_search.execute
 
-        @solr_search.facets
+        @solr_search.facets.first.rows
 
       end
 
