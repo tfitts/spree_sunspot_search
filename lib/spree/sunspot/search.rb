@@ -16,7 +16,7 @@ module Spree
 
         @solr_search =  ::Sunspot.new_search(Spree::Product) do |q|
 
-          list = [:category,:group,:type,:theme,:color,:shape,:brand,:size,:material,:for,:agegroup,:saletype]
+          list = [:category,:group,:type,:theme,:color,:shape,:brand,:size,:material,:for,:agegroup,:saletype,:pattern]
           list.each do |facet|
             q.facet(facet)
           end
@@ -48,7 +48,7 @@ module Spree
 
           if featured > 0 then
             q.with(:featured, true)
-            q.paginate(:page => @properties[:page] || 1, :per_page => 10000)
+            q.paginate(:page => @properties[:page] || 1, :per_page => @properties[:per_page])
           else
             q.paginate(:page => @properties[:page] || 1, :per_page => @properties[:per_page] || Spree::Config[:products_per_page])
           end
@@ -178,18 +178,16 @@ module Spree
 
         #search keywords for matches in taxon names
         Spree::Taxon.all(:order => 'length(name) desc, name').each do |cat|
-          unless ['Balloons','Tableware'].include? cat.name then
-            if key.include? cat.name then
-              redirect.update(:permalink => cat)
-              key = key.gsub(cat.name,'')
-              break
-            end
+          if key.include? cat.name then
+            redirect.update(:permalink => cat)
+            key = key.gsub(cat.name,'')
+            break
           end
         end
 
 
         #select facets for
-        matches = [:category, :group, :type, :theme, :keyword, :color, :shape, :size]
+        matches = [:category, :group, :type, :theme, :keyword, :color, :shape, :size, :pattern]
         @facet_match = ::Sunspot.new_search(Spree::Product) do |q|
 
           matches.sort_by(&:length).reverse.each do |facet|
@@ -280,7 +278,7 @@ module Spree
         filter = {}
         filter = {:taxon_ids => taxon.self_and_descendants.map(&:id)} unless taxon.class == NilClass
 
-        list = [:category,:group,:type,:theme,:color,:shape,:brand,:size,:material,:for,:agegroup,:saletype,:keyword]
+        list = [:category,:group,:type,:theme,:color,:shape,:brand,:size,:material,:for,:agegroup,:saletype,:keyword,:pattern]
         list.each do |prop|
           filter.update(prop.to_s => params[prop.to_s].split(',')) unless !params[prop.to_s].present?
         end
