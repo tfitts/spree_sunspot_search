@@ -12,7 +12,7 @@ module Spree
         @solr_search
       end
 
-      def retrieve_products(featured = 0)
+      def retrieve_products(featured = 0, paginate = true)
 
         @solr_search =  ::Sunspot.new_search(Spree::Product) do |q|
 
@@ -48,9 +48,13 @@ module Spree
 
           if featured > 0 then
             q.with(:featured, true)
-            q.paginate(:page => @properties[:page] || 1, :per_page => @properties[:per_page])
+            if paginate
+              q.paginate(:page => @properties[:page] || 1, :per_page => @properties[:per_page])
+            end
           else
-            q.paginate(:page => @properties[:page] || 1, :per_page => @properties[:per_page] || Spree::Config[:products_per_page])
+            if paginate
+              q.paginate(:page => @properties[:page] || 1, :per_page => @properties[:per_page] || Spree::Config[:products_per_page])
+            end
           end
 
 
