@@ -47,18 +47,14 @@ module Spree
           end
 
           if featured > 0 then
-            q.with(:featured, true)
-            if paginate
-              q.paginate(:page => @properties[:page] || 1, :per_page => @properties[:per_page])
-            end
-          else
-            if paginate
-              q.paginate(:page => @properties[:page] || 1, :per_page => @properties[:per_page] || Spree::Config[:products_per_page])
-            end
+            q.with(:featured, true)            
           end
 
-
-
+          if paginate
+            q.paginate(:page => @properties[:page] || 1, :per_page => @properties[:per_page] || Spree::Config[:products_per_page])
+          else
+            q.paginate(:page => @properties[:page] || 1, :per_page => 1000) # Could do Spree::Product.count, but we'll save the query and just assume 1000
+          end
         end
 
 
