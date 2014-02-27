@@ -278,7 +278,7 @@ module Spree
         filter = {}
         filter = {:taxon_ids => taxon.self_and_descendants.map(&:id)} unless taxon.class == NilClass
 
-        list = [:category,:group,:type,:theme,:color,:shape,:brand,:size,:material,:for,:agegroup,:saletype,:keyword,:pattern]
+        list = [:category,:group,:type,:theme,:color,:shape,:brand,:size,:material,:for,:agegroup,:saletype,:keyword,:pattern,:supplements]
         list.each do |prop|
           filter.update(prop.to_s => params[prop.to_s].split(',')) unless !params[prop.to_s].present?
         end
