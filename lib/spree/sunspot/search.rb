@@ -16,7 +16,7 @@ module Spree
 
         @solr_search =  ::Sunspot.new_search(Spree::Product) do |q|
 
-          list = [:category,:group,:type,:theme,:color,:shape,:brand,:size,:material,:for,:agegroup,:saletype,:pattern]
+          list = [:category,:group,:type,:theme,:color,:shape,:brand,:size,:material,:for,:saletype,:pattern]
           list.each do |facet|
             q.facet(facet)
           end
@@ -187,7 +187,7 @@ module Spree
 
 
         #select facets for
-        matches = [:category, :group, :type, :theme, :keyword, :color, :shape, :size, :pattern]
+        matches = [:category, :group, :type, :theme, :keyword, :color, :shape, :size, :pattern, :gender, :count]
         @facet_match = ::Sunspot.new_search(Spree::Product) do |q|
 
           matches.sort_by(&:length).reverse.each do |facet|
@@ -274,11 +274,10 @@ module Spree
       def prepare(params)
         super
 
-
         filter = {}
-        filter = {:taxon_ids => taxon.self_and_descendants.map(&:id)} unless taxon.class == NilClass
+        filter = {:taxon_ids => taxon.self_and_descendants.map(&:id) + taxon.related_ids} unless taxon.class == NilClass
 
-        list = [:category,:group,:type,:theme,:color,:shape,:brand,:size,:material,:for,:agegroup,:saletype,:keyword,:pattern,:supplements]
+        list = [:category,:group,:type,:theme,:color,:shape,:brand,:size,:material,:for,:saletype,:keyword,:pattern,:supplements]
         list.each do |prop|
           filter.update(prop.to_s => params[prop.to_s].split(',')) unless !params[prop.to_s].present?
         end
