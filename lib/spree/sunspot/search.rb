@@ -47,7 +47,7 @@ module Spree
           end
 
           if featured > 0 then
-            q.with(:featured, true)            
+            q.with(:featured, 1)          
           end
 
           if paginate
@@ -187,7 +187,7 @@ module Spree
 
 
         #select facets for
-        matches = [:category, :group, :type, :theme, :keyword, :color, :shape, :size, :pattern, :gender, :count]
+        matches = [:category, :group, :type, :theme, :keyword, :color, :shape, :size, :pattern, :count]
         @facet_match = ::Sunspot.new_search(Spree::Product) do |q|
 
           matches.sort_by(&:length).reverse.each do |facet|
