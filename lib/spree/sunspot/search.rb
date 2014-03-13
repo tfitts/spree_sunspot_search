@@ -16,40 +16,52 @@ module Spree
 
         @solr_search =  ::Sunspot.new_search(Spree::Product) do |q|
 
+          # Full text search
+          unless @term.nil?
+            field_term = @term.split(' ').select{|t|!["party"].include?(t)}.join(' ')
+            q.fulltext(field_term) do
+              boost_fields({
+                :group => 7.0,
+                :title => 3.0,                
+                :theme => 2.0,
+                :for => 1.1
+              })
+              minimum_match 1
+            end
+          end
+
+          # Add facets
           list = [:category,:group,:type,:theme,:color,:shape,:brand,:size,:material,:for,:saletype,:pattern]
           list.each do |facet|
             q.facet(facet)
           end
 
+          # Filter results
           q.with(:is_active, true)
-          q.keywords(keywords)
-
-          q.order_by(:missing_image)
-          q.order_by(:in_stock, :desc)
-
-
-          unless @properties[:order_by].empty?
-            sort = @properties[:order_by].split(',')
-            q.order_by(sort[0],sort[1])
-          end
-
-
-          q.order_by(:theme)
-
-
-          q.order_by(:position)
-          q.order_by(:subposition)
-
           if @properties[:price].present? then
             low = @properties[:price].first
             high = @properties[:price].last
             q.with(:price,low..high)
           end
-
           if featured > 0 then
             q.with(:featured, 1)          
           end
+          
+          # Order results
+          q.order_by(:in_stock, :desc)
+          q.order_by(:missing_image)
+          unless @term.nil?
+            q.order_by(:score, :desc)
+          end
+          q.order_by(:theme)
+          q.order_by(:position)
+          q.order_by(:subposition)
+          unless @properties[:order_by].empty?
+            sort = @properties[:order_by].split(',')
+            q.order_by(sort[0],sort[1])
+          end
 
+          # Paginate
           if paginate
             q.paginate(:page => @properties[:page] || 1, :per_page => @properties[:per_page] || Spree::Config[:products_per_page])
           else
@@ -57,7 +69,7 @@ module Spree
           end
         end
 
-
+        # Add filter queries based on url params
         unless @properties[:filters].blank?
           conditions = Spree::Sunspot::Filter::Query.new( @properties[:filters] )
           @solr_search = conditions.build_search( @solr_search )
@@ -173,56 +185,58 @@ module Spree
 
         return {} unless keywords
 
-        key = keywords.titleize
-        redirect = {}
-
         #search keywords for matches in taxon names
-        Spree::Taxon.all(:order => 'length(name) desc, name').each do |cat|
-          if key.include? cat.name then
-            redirect.update(:permalink => cat)
-            key = key.gsub(cat.name,'')
-            break
-          end
-        end
+        # Spree::Taxon.all(:order => 'length(name) desc, name').each do |cat|
+        #   if key.include? cat.name then
+        #     redirect.update(:permalink => cat)
+        #     key = key.gsub(cat.name,'')
+        #     break
+        #   end
+        # end
 
 
         #select facets for
-        matches = [:category, :group, :type, :theme, :keyword, :color, :shape, :size, :pattern, :count]
-        @facet_match = ::Sunspot.new_search(Spree::Product) do |q|
+        # matches = [:category, :group, :type, :theme, :keyword, :color, :shape, :size, :pattern, :count]
+        # @facet_match = ::Sunspot.new_search(Spree::Product) do |q|
 
-          matches.sort_by(&:length).reverse.each do |facet|
-            q.facet facet, :limit => -1, :sort => :count
-          end
-          q.paginate(page: 1, per_page: Spree::Product.count)
+        #   matches.sort_by(&:length).reverse.each do |facet|
+        #     q.facet facet, :limit => -1, :sort => :count
+        #   end
+        #   q.paginate(page: 1, per_page: Spree::Product.count)
 
+        # end
+
+
+        # @facet_match.execute
+
+        # @facet_match.hits.each do |hit|
+        #   if hit.stored(:sku) == keywords.upcase then
+        #     return {:product => hit }
+        #   end
+        # end
+
+        # matches.each do |face|
+        #   @facet_match.facet(face).rows.each do |row|
+        #     if key.match("\\b#{row.value}\\b") then
+        #       key = key.gsub(row.value,'')
+        #       redirect.update(face => row.value)
+        #     elsif key.match("\\b#{row.value.singularize}\\b")
+        #       key = key.gsub(row.value.singularize,'')
+        #       redirect.update(face => row.value)
+        #     end
+        #   end
+        # end
+
+        # Redirect to product on sku match
+        product_match = Spree::Product.joins(:master).where("spree_variants.sku = ?", keywords).take(1)
+        unless product_match.nil? || product_match.empty?
+          return {:product => hit}
         end
 
+        # redirect.update(:keywords => key.strip.split.join(' ')) unless key.strip.empty?
+        # params["q"] = keywords
 
-        @facet_match.execute
-
-        @facet_match.hits.each do |hit|
-          if hit.stored(:sku) == keywords.upcase then
-            return {:product => hit }
-          end
-        end
-
-        matches.each do |face|
-          @facet_match.facet(face).rows.each do |row|
-            if key.match("\\b#{row.value}\\b") then
-              key = key.gsub(row.value,'')
-              redirect.update(face => row.value)
-            elsif key.match("\\b#{row.value.singularize}\\b")
-              key = key.gsub(row.value.singularize,'')
-              redirect.update(face => row.value)
-            end
-          end
-        end
-
-        redirect.update(:keywords => key.strip.split.join(' ')) unless key.strip.empty?
-        redirect.update(:q => keywords)
-
-        redirect
-
+        {}
       end
 
       protected
@@ -273,6 +287,7 @@ module Spree
 
       def prepare(params)
         super
+        @term = params[:keywords]
 
         filter = {}
         filter = {:taxon_ids => taxon.self_and_descendants.map(&:id) + taxon.related_ids} unless taxon.class == NilClass
