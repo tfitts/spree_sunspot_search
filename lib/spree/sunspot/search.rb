@@ -20,11 +20,37 @@ module Spree
           unless @term.nil?
             field_term = @term.split(' ').select{|t|!["party"].include?(t)}.join(' ')
             q.fulltext(field_term) do
+              fields(
+                :category,
+                :group,
+                :type,
+                :name,
+                :theme,
+                :for,
+                :pattern,
+                :color,
+                :material,
+                :size,
+                :brand,
+                :taxon,
+                :related_taxons,
+                :shape
+              )
               boost_fields({
-                :group => 7.0,
-                :title => 3.0,                
-                :theme => 2.0,
-                :for => 1.1
+                :group => 5.0,                
+                :name => 2.0,
+                :theme => 1.0,
+                :for => 1.0,
+                # :material => 1.0,
+                # :saletype => 1.0,
+                # :pattern => 1.0,
+                # :brand => 1.0,
+                # :size => 1.0,
+                # :shape => 1.0,
+                # :color => 1.0,
+                # :description => 0.8,
+                # :category => 0.5,
+                # :type => 0.5,
               })
               minimum_match 1
             end
@@ -48,11 +74,11 @@ module Spree
           end
           
           # Order results
-          q.order_by(:in_stock, :desc)
-          q.order_by(:missing_image)
           unless @term.nil?
             q.order_by(:score, :desc)
           end
+          q.order_by(:in_stock, :desc)
+          q.order_by(:missing_image)          
           q.order_by(:theme)
           q.order_by(:position)
           q.order_by(:subposition)
@@ -230,7 +256,7 @@ module Spree
         # Redirect to product on sku match
         product_match = Spree::Product.joins(:master).where("spree_variants.sku = ?", keywords).take(1)
         unless product_match.nil? || product_match.empty?
-          return {:product => hit}
+          return {:product => product_match[0]}
         end
 
         # redirect.update(:keywords => key.strip.split.join(' ')) unless key.strip.empty?
