@@ -12,8 +12,25 @@ module Spree
         @solr_search
       end
 
-      def retrieve_products(featured = 0, paginate = true)
-
+      def retrieve_products(featured = 0, paginate = true, boosts = nil)
+        if boosts.nil?
+          boosts = {
+            # :group => 4.0,                
+            # :name => 2.0,
+            # :theme => 1.0,
+            # :for => 1.0,
+            # :material => 1.0,
+            # :saletype => 1.0,
+            # :pattern => 1.0,
+            # :brand => 1.0,
+            # :size => 1.0,
+            # :shape => 1.0,
+            # :color => 1.0,
+            # :description => 0.8,
+            # :category => 0.5,
+            # :type => 0.5,
+          }
+        end
         @solr_search =  ::Sunspot.new_search(Spree::Product) do |q|
 
           # Full text search
@@ -36,22 +53,7 @@ module Spree
                 :related_taxons,
                 :shape
               )
-              boost_fields({
-                :group => 5.0,                
-                :name => 2.0,
-                :theme => 1.0,
-                :for => 1.0,
-                # :material => 1.0,
-                # :saletype => 1.0,
-                # :pattern => 1.0,
-                # :brand => 1.0,
-                # :size => 1.0,
-                # :shape => 1.0,
-                # :color => 1.0,
-                # :description => 0.8,
-                # :category => 0.5,
-                # :type => 0.5,
-              })
+              boost_fields(boosts)
               minimum_match 1
             end
           end
