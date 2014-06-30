@@ -43,7 +43,7 @@ module Spree
                 :type,
                 :name,
                 :theme,
-                :for,
+                :gender,
                 :pattern,
                 :color,
                 :material,
@@ -59,7 +59,7 @@ module Spree
           end
 
           # Add facets
-          list = [:category,:group,:type,:theme,:color,:shape,:brand,:size,:material,:for,:saletype,:pattern]
+          list = [:category,:group,:type,:theme,:color,:shape,:brand,:size,:material,:saletype,:pattern,:gender]
           list.each do |facet|
             q.facet(facet)
           end
@@ -320,7 +320,7 @@ module Spree
         filter = {}
         filter = {:taxon_ids => taxon.self_and_descendants.map(&:id) + taxon.related_ids} unless taxon.class == NilClass
 
-        list = [:category,:group,:type,:theme,:color,:shape,:brand,:size,:material,:for,:saletype,:keyword,:pattern,:supplements]
+        list = [:category,:group,:type,:theme,:color,:shape,:brand,:size,:material,:for,:saletype,:keyword,:pattern,:supplements,:gender]
         list.each do |prop|
           filter.update(prop.to_s => params[prop.to_s].split(',')) unless !params[prop.to_s].present?
         end
