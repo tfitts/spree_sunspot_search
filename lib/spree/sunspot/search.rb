@@ -31,7 +31,7 @@ module Spree
             # :type => 0.5,
           }
         end
-        @solr_search =  ::Sunspot.new_search(Spree::Product) do |q|
+        @solr_search =  ::Sunspot.new_search(Spree::Variant) do |q|
 
           # Full text search
           unless @term.nil?
@@ -66,6 +66,7 @@ module Spree
 
           # Filter results
           q.with(:is_active, true)
+          q.with(:listed, true)
           if @properties[:price].present? then
             low = @properties[:price].first
             high = @properties[:price].last
@@ -93,7 +94,7 @@ module Spree
           if paginate
             q.paginate(:page => @properties[:page] || 1, :per_page => @properties[:per_page] || Spree::Config[:products_per_page])
           else
-            q.paginate(:page => @properties[:page] || 1, :per_page => 1000) # Could do Spree::Product.count, but we'll save the query and just assume 1000
+            q.paginate(:page => @properties[:page] || 1, :per_page => 1000) # Could do Spree::Variant.count, but we'll save the query and just assume 1000
           end
         end
 
@@ -111,7 +112,7 @@ module Spree
 
       def retrieve_related(theme)
 
-        @related =  ::Sunspot.new_search(Spree::Product) do |q|
+        @related =  ::Sunspot.new_search(Spree::Variant) do |q|
 
           q.with(:is_active, true)
 
@@ -144,7 +145,7 @@ module Spree
 
       def groups(category)
 
-        @solr_search =  ::Sunspot.new_search(Spree::Product) do |q|
+        @solr_search =  ::Sunspot.new_search(Spree::Variant) do |q|
 
           #list = [:category,:group,:type,:theme,:color,:shape,:brand,:size,:material,:for,:agegroup]
           #list.each do |facet|
@@ -198,9 +199,9 @@ module Spree
         hits = []
         if products_search.total > 0
           hits = products_search.hits.collect{|hit| hit.primary_key.to_i}
-          base_scope = base_scope.where( ["#{Spree::Product.table_name}.id in (?)", hits] )
+          base_scope = base_scope.where( ["#{Spree::Variant.table_name}.id in (?)", hits] )
         else
-          base_scope = base_scope.where( ["#{Spree::Product.table_name}.id = -1"] )
+          base_scope = base_scope.where( ["#{Spree::Variant.table_name}.id = -1"] )
         end
         products_scope = @product_group.apply_on(base_scope)
         products_results = products_scope.includes([:images, :master]).page(1)
@@ -256,9 +257,9 @@ module Spree
         # end
 
         # Redirect to product on sku match
-        product_match = Spree::Product.joins(:master).where("spree_variants.sku = ?", keywords).take(1)
-        unless product_match.nil? || product_match.empty?
-          return {:product => product_match[0]}
+        variant = Spree::Variant.includes(:product).where("spree_variants.sku = ?", keywords).take(1)
+        unless variant.nil? || variant.empty?
+          return {:product => variant.product, :variant => variant}
         end
 
         # redirect.update(:keywords => key.strip.split.join(' ')) unless key.strip.empty?
@@ -281,7 +282,7 @@ module Spree
 
       # TODO: This method is shit; clean it up John. At least you were paid to write this =P
       def get_products_conditions_for(base_scope, query)
-        @solr_search = ::Sunspot.new_search(Spree::Product) do |q|
+        @solr_search = ::Sunspot.new_search(Spree::Variant) do |q|
           q.keywords(query)
 
           q.order_by(
@@ -290,7 +291,7 @@ module Spree
           # Use a high per_page here so that all results are retrieved when setting base_scope at the end of this method.
           # Otherwise you'll never have more than the first page of results from here returned, when pagination is done
           # during the retrieve_products method.
-          q.paginate(page: 1, per_page: Spree::Product.count)
+          q.paginate(page: 1, per_page: Spree::Variant.count)
         end
 
         unless @properties[:filters].blank?
@@ -305,9 +306,9 @@ module Spree
         @solr_search.execute
         if @solr_search.total > 0
           @hits = @solr_search.hits.collect{|hit| hit.primary_key.to_i}
-          base_scope = base_scope.where( ["#{Spree::Product.table_name}.id in (?)", @hits] )
+          base_scope = base_scope.where( ["#{Spree::Variant.table_name}.id in (?)", @hits] )
         else
-          base_scope = base_scope.where( ["#{Spree::Product.table_name}.id = -1"] )
+          base_scope = base_scope.where( ["#{Spree::Variant.table_name}.id = -1"] )
         end
 
         base_scope
