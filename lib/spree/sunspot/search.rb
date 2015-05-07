@@ -12,6 +12,20 @@ module Spree
         @solr_search
       end
 
+      def query_facets(facets, conditions)
+        @solr_search = ::Sunspot.new_search(Spree::Product) do |q|
+          conditions.each do |facet_name, value|
+            q.with(facet_name, value)
+          end
+          q.with(:is_active, true)
+          facets.each do |facet|
+            q.facet(facet)
+          end
+        end
+        @solr_search.execute
+        @solr_search.hits
+      end
+
       def retrieve_products(featured = 0, paginate = true, boosts = nil)
         if boosts.nil?
           boosts = {
@@ -322,7 +336,11 @@ module Spree
 
         list = [:category,:group,:type,:theme,:color,:shape,:brand,:size,:material,:for,:saletype,:keyword,:pattern,:supplements,:gender]
         list.each do |prop|
-          filter.update(prop.to_s => params[prop.to_s].split(',')) unless !params[prop.to_s].present?
+          if params[prop.to_s].is_a?(Array)
+            filter.update(prop.to_s => params[prop.to_s])
+          else
+            filter.update(prop.to_s => params[prop.to_s].split(',')) unless !params[prop.to_s].present?
+          end
         end
 
         #if @properties[:taxon].respond_to?(:id)
