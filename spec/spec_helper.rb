@@ -11,7 +11,7 @@ require 'ffaker'
 Dir[Rails.root.join("spec/support/**/*.rb")].each {|f| require f}
 
 # Requires factories defined in spree_core
-require 'spree/core/testing_support/factories'
+require 'spree/testing_support/factories'
 
 RSpec.configure do |config|
   # == Mock Framework
