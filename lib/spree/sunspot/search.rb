@@ -11,7 +11,7 @@ module Spree
       def solr_search
         @solr_search
       end
-
+      
       def retrieve_products(featured = 0, paginate = true, boosts = nil)
         if boosts.nil?
           boosts = {
@@ -31,7 +31,8 @@ module Spree
             # :type => 0.5,
           }
         end
-        @solr_search =  ::Sunspot.new_search(Spree::Product) do |q|
+        
+        @solr_search = ::Sunspot.new_search(Spree::Product) do |q|
 
           # Full text search
           unless @term.nil?
@@ -96,17 +97,32 @@ module Spree
             q.paginate(:page => @properties[:page] || 1, :per_page => 1000) # Could do Spree::Product.count, but we'll save the query and just assume 1000
           end
         end
-
-        # Add filter queries based on url params
-        unless @properties[:filters].blank?
-          conditions = Spree::Sunspot::Filter::Query.new( @properties[:filters] )
-          @solr_search = conditions.build_search( @solr_search )
+        filtered_results
+      end
+      
+      def retrieve_featured
+        @solr_search =  ::Sunspot.new_search(Spree::Product) do |q|
+          q.order_by(:featured, :desc)
+          q.paginate(page: 1, per_page: 1)
         end
-
+        filtered_results
+      end
+      
+      def filtered_results
+        add_filter_queries
+        search_results
+      end
+      
+      def add_filter_queries
+        unless @properties[:filters].blank?
+          conditions = Spree::Sunspot::Filter::Query.new(@properties[:filters])
+          @solr_search = conditions.build_search(@solr_search)
+        end
+      end
+      
+      def search_results
         @solr_search.execute
-
         @solr_search.hits
-
       end
 
       def retrieve_related(theme)
