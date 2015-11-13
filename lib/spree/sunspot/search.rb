@@ -13,6 +13,8 @@ module Spree
       end
       
       def retrieve_products(featured = 0, paginate = true, boosts = nil)
+        binding.pry
+        
         if boosts.nil?
           boosts = {
             # :group => 4.0,                
@@ -32,70 +34,12 @@ module Spree
           }
         end
         
-        @solr_search = ::Sunspot.new_search(Spree::Product) do |q|
-
-          # Full text search
-          unless @term.nil?
-            field_term = @term.split(' ').select{|t|!["party"].include?(t)}.join(' ')
-            q.fulltext(field_term) do
-              fields(
-                :category,
-                :group,
-                :type,
-                :name,
-                :theme,
-                :gender,
-                :pattern,
-                :color,
-                :material,
-                :size,
-                :brand,
-                :taxon,
-                :related_taxons,
-                :shape
-              )
-              boost_fields(boosts)
-              minimum_match 1
-            end
-          end
-
-          # Add facets
-          list = [:category,:group,:type,:theme,:color,:shape,:brand,:size,:material,:saletype,:pattern,:gender]
-          list.each do |facet|
-            q.facet(facet)
-          end
-
-          # Filter results
-          q.with(:is_active, true)
-          if @properties[:price].present? then
-            low = @properties[:price].first
-            high = @properties[:price].last
-            q.with(:price,low..high)
-          end
-          if featured > 0 then
-            q.with(:featured, 1)          
-          end
-          
-          # Order results
-          unless @term.nil?
-            q.order_by(:score, :desc)
-          end
-          q.order_by(:in_stock, :desc)
-          q.order_by(:missing_image)          
-          q.order_by(:theme)
-          q.order_by(:position)
-          q.order_by(:subposition)
-          unless @properties[:order_by].empty?
-            sort = @properties[:order_by].split(',')
-            q.order_by(sort[0],sort[1])
-          end
-
-          # Paginate
-          if paginate
-            q.paginate(:page => @properties[:page] || 1, :per_page => @properties[:per_page] || Spree::Config[:products_per_page])
-          else
-            q.paginate(:page => @properties[:page] || 1, :per_page => 1000) # Could do Spree::Product.count, but we'll save the query and just assume 1000
-          end
+        @solr_search =  ::Sunspot.new_search(Spree::Product) do |q|
+          set_query_fulltext q boosts;
+          set_query_facets q;
+          set_query_filters q featured;
+          set_query_ordering q;
+          set_query_pagination q paginate;
         end
         filtered_results
       end
@@ -123,6 +67,97 @@ module Spree
       def search_results
         @solr_search.execute
         @solr_search.hits
+      end
+      
+      def plaintext_to_field_term(plaintext)
+        # Here is where spell-checking should eventually be done
+        return plaintext.split(' ').select{|t|!["party"].include?(t)}.join(' ')
+      end
+      
+      def set_query_fulltext(q,boosts) 
+        boosts = {
+          :group => 0.3,
+          :name => 2.5,
+          :theme => 1.5,
+          :category => 0.1,
+          :type => 0.5,
+          :gender => 3.0,
+          :pattern => 1.2,
+          :color => 1.2,
+          :material => 1.9,
+          :size => 1.2,
+          :taxon => 1.3,
+          :related_taxons => 0.9,
+          :shape => 1.2,
+          :brand => 0.3,
+          :in_stock => 5.0
+        }
+        
+        unless @term.nil?
+          field_term =  plaintext_to_field_term @term
+          q.fulltext(field_term) do
+            fields(
+              :category,
+              :group,
+              :type,
+              :name,
+              :theme,
+              :gender,
+              :pattern,
+              :color,
+              :material,
+              :size,
+              :brand,
+              :taxon,
+              :related_taxons,
+              :shape
+            )
+            boost_fields(boosts)
+            boost(function {[:category,:group,:type].max})
+            minimum_match 1
+          end
+        end
+      end
+      
+      def set_query_facets(q) 
+        list = [:category,:group,:type,:theme,:color,:shape,:brand,:size,:material,:saletype,:pattern,:gender]
+        list.each do |facet|
+          q.facet(facet)
+        end
+      end
+      
+      def set_query_filters(q, featured)
+        q.with(:is_active, true)
+        if @properties[:price].present? then
+          low = @properties[:price].first
+          high = @properties[:price].last
+          q.with(:price,low..high)
+        end
+        if featured > 0 then
+          q.with(:featured, 1)          
+        end
+      end
+      
+      def set_query_ordering(q)
+        unless @term.nil?
+          q.order_by(:score, :desc)
+        end
+        q.order_by(:in_stock, :desc)
+        q.order_by(:missing_image)          
+        q.order_by(:theme)
+        q.order_by(:position)
+        q.order_by(:subposition)
+        unless @properties[:order_by].empty?
+          sort = @properties[:order_by].split(',')
+          q.order_by(sort[0],sort[1])
+        end
+
+      def set_query_pagination(q,paginate) 
+        if paginate
+          q.paginate(:page => @properties[:page] || 1, :per_page => @properties[:per_page] || Spree::Config[:products_per_page])
+        else
+          q.paginate(:page => @properties[:page] || 1, :per_page => 1000) # Could do Spree::Product.count, but we'll save the query and just assume 1000
+        end
       end
 
       def retrieve_related(theme)
