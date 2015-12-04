@@ -81,8 +81,7 @@ module Spree
             q.order_by(:score, :desc)
           end
           q.order_by(:in_stock, :desc)
-          q.order_by(:missing_image)          
-          q.order_by(:theme)
+          q.order_by(:missing_image)
           q.order_by(:position)
           q.order_by(:subposition)
           unless @properties[:order_by].empty?
