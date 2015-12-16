@@ -40,7 +40,7 @@ module Spree
         },
         :facets => [[:category], [:group], [:type], [:theme], [:color], [:shape], [:brand], [:size], [:material], [:saletype], [:pattern], [:gender]],
         :filters => [[:is_active,true]],
-        :order_by => [[:in_stock, :desc], [:missing_image], [:theme], [:position],[:subposition]],
+        :order_by => [[:in_stock, :desc], [:missing_image], [:position], [:subposition]],
         :filter_price => true,
         :order_score => true
       }
@@ -54,7 +54,7 @@ module Spree
 
       @@related_parameters = {
         :filters => [[:is_active,true]],
-        :order_by => [[:missing_image],[:in_stock,:desc],[:theme],[:position],[:subposition]],
+        :order_by => [[:missing_image],[:in_stock,:desc],[:position],[:subposition]],
         :page => 1,
         :per_page => 100
       }
@@ -129,11 +129,11 @@ module Spree
         end
         
         parameters[:order_by].each do |o|
-          q.order_by(o[0],o[1])
+          q.order_by(*o)
         end
         unless @properties[:order_by].empty?
           sort = @properties[:order_by].split(',')
-          q.order_by(sort[0],sort[1])
+          q.order_by(*sort)
         end
         
         if parameters[:page].nil?
