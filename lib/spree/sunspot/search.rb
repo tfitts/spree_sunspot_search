@@ -99,12 +99,16 @@ module Spree
           end
         end
         
-        parameters[:facets].each do |facet|
-          q.facet(*facet)
+        if parameters[:facets]
+          parameters[:facets].each do |facet|
+            q.facet(*facet)
+          end
         end
         
-        parameters[:filters].each do |filter|
-          q.with(*filter)
+        if parameters[:filters]
+          parameters[:filters].each do |filter|
+            q.with(*filter)
+          end
         end
         
         unless parameters[:keywords].nil?
@@ -118,7 +122,7 @@ module Spree
             q.with(:price,low..high)
           end
         end
-        if parameters[:featured] > 0 then
+        if parameters[:featered] and parameters[:featured] > 0 then
           q.with(:featured, 1)          
         end
         
@@ -128,9 +132,12 @@ module Spree
           end
         end
         
-        parameters[:order_by].each do |o|
-          q.order_by(*o)
+        if parameters[:order_by]
+          parameters[:order_by].each do |o|
+            q.order_by(*o)
+          end
         end
+          
         unless @properties[:order_by].empty?
           sort = @properties[:order_by].split(',')
           q.order_by(*sort)
