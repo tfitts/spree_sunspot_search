@@ -60,7 +60,7 @@ module Spree
       }
       
       @@group_parameters = {
-        :facets => [[:group,:limit => 1]],
+        :facets => [[:group,:limit => -1]],
         :filters => [[:is_active,true]],
         :order_by => [[:position],[:subposition]],
         :filter_price => true,
@@ -122,7 +122,7 @@ module Spree
             q.with(:price,low..high)
           end
         end
-        if parameters[:featered] and parameters[:featured] > 0 then
+        if parameters[:featured] and parameters[:featured] > 0 then
           q.with(:featured, 1)          
         end
         
@@ -166,10 +166,8 @@ module Spree
       end
       
       def retrieve_products(featured = 0, paginate = true)
-        @@products_parameters[:featured] = featured
-        @@products_parameters[:paginate] = paginate
-        
-        @solr_search = create_search @@products_parameters
+        products_parameters = @@products_parameters.merge({:featured => featured, :paginate => paginate})
+        @solr_search = create_search products_parameters
         
         add_filter_queries
         @solr_search.execute
@@ -194,10 +192,11 @@ module Spree
       end
 
       def groups(category)
-        @@group_parameters[:filters] << [:category,category]
-        @@group_parameters[:keywords] = keywords
+        group_parameters = @@group_parameters.merge({:keywords => keywords})
+        group_parameters[:filters] = group_parameters[:filters].dup
+        group_parameters[:filters] << [:category,category]
         
-        @solr_search = create_search @@group_parameters
+        @solr_search = create_search group_parameters
 
         add_filter_queries
         @solr_search.execute
