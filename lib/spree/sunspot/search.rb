@@ -9,6 +9,7 @@ module Spree
   module Sunspot
     class Search < Spree::Core::Search::Base
       attr_reader :solr_search
+      attr_accessor :store
       
       @@products_parameters = {
         :fields => [:name, :sets, :attributes, :category, :group, :type, :subtype, :theme, :brand, :taxon],
@@ -39,8 +40,8 @@ module Spree
           :taxon => 0.025
         },
         :facets => [[:category], [:group], [:type], [:theme], [:color], [:shape], [:brand], [:size], [:material], [:saletype], [:pattern], [:gender]],
-        :filters => [[:is_active,true]],
-        :order_by => [[:in_stock, :desc], [:missing_image], [:position], [:subposition]],
+        :filters => [[:is_active,true], [:missing_image,0]],
+        :order_by => [[:in_stock, :desc], [:position], [:subposition]],
         :filter_price => true,
         :order_score => true
       }
@@ -67,17 +68,11 @@ module Spree
         :paginate => true
       }
       
-      def plaintext_to_field_term(plaintext)
-        # this should probably be done elsewhere though I'm not 100% where
-        plaintext.split(' ').select{|t|!["party", "emptyproperty"].include?(t)}.join(' ')
-      end
-      
       def apply_query_parameters(q,parameters)
         q.spellcheck
         
         unless @term.nil?
-          field_term =  plaintext_to_field_term @term
-          q.fulltext(field_term) do
+          q.fulltext(@term) do
             if parameters[:fields]
               fields(*parameters[:fields])
             end
@@ -105,6 +100,9 @@ module Spree
           end
         end
         
+        unless @store.nil? 
+          q.with(:store, @store.id)
+        end
         if parameters[:filters]
           parameters[:filters].each do |filter|
             q.with(*filter)
@@ -305,8 +303,6 @@ module Spree
 
         base_scope = add_search_scopes(base_scope)
       end
-
-
 
       # TODO: This method is shit; clean it up John. At least you were paid to write this =P
       def get_products_conditions_for(base_scope, query)
